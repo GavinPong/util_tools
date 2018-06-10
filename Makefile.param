@@ -1,0 +1,43 @@
+export   CHIP_TYPE := HI_3531A
+#export   CHIP_TYPE := HI_3519
+
+TOP_PATH := /home/share_disk/workspace/code/util_tools
+
+#tools_chain
+ifeq ($(CHIP_TYPE), HI_3531A)
+
+TOOL_CHAIN_DIR := /home/share_disk/tool_chain/3531A_030/arm-hisiv300-linux/target/bin/
+CROSS_COMPILE := $(TOOL_CHAIN_DIR)/arm-hisiv300-linux-
+export CHIP_SDK_DIR := /home/qfh/MyWorkSpace/sdk/HiSi/Hi3531A_SDK_V1.0.3.0/mpp
+
+else
+ifeq ($(CHIP_TYPE), HI_3519)
+
+TOOL_CHAIN_DIR := /home/share_disk/tool_chain/3519/arm-hisiv500-linux/target/bin
+CROSS_COMPILE := $(TOOL_CHAIN_DIR)/arm-hisiv500-linux-
+export CHIP_SDK_DIR := /home/qfh/MyWorkSpace/sdk/HiSi/Hi3519V101_SDK_V1.0.1.0/mpp_big-little
+
+endif
+endif
+
+export CC := $(CROSS_COMPILE)gcc
+export CPP := $(CROSS_COMPILE)g++
+export AR := $(CROSS_COMPILE)ar
+export LD := $(CROSS_COMPILE)ld
+export STRIP := $(CROSS_COMPILE)strip
+export STRIPFLAGS:= -g --strip-unneeded
+export MAKEDEPEND =$(CC) -MM -MT
+
+
+#common dir start
+cJSON_SRC_DIR := ./code/cJSON
+LIST_SRC_DIR := ./code/list
+CROSS_PLATFORM_DIR := ./code/cross_platform
+
+#common dir end
+
+export CFLAGS := -DPLATFORM=LINUX_PLATFORM
+extern LDFLAGS := 
+
+
+export  NFS_DIR := /home/disk2/zp/work_space/exe_name
