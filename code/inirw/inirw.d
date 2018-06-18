@@ -1,1 +1,0 @@
-inirw.o: inirw.c

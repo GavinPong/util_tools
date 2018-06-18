@@ -30,9 +30,9 @@ export MAKEDEPEND =$(CC) -MM -MT
 
 
 #common dir start
-cJSON_SRC_DIR := $(TOP_PATH)/cJSON
-LIST_SRC_DIR := $(TOP_PATH)/list
-CROSS_PLATFORM_DIR := $(TOP_PATH)/cross_platform
+cJSON_SRC_DIR := $(TOP_PATH)/code/cJSON
+LIST_SRC_DIR := $(TOP_PATH)/code/list
+CROSS_PLATFORM_DIR := $(TOP_PATH)/code/cross_platform
 
 #common dir end
 
