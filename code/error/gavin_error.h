@@ -20,6 +20,7 @@ History       :
 #ifndef __GAVIN_ERROR_H__
 #define __GAVIN_ERROR_H__
 
+#include "cross_platform.h"
 
 /******************************************************************************
 |----------------------------------------------------------------|
@@ -31,11 +32,11 @@ History       :
 #define GAVIN_SUCCESS  0
 #define GAVIN_FAILURE  (-1)
 
-//ĞÂµÄAPP¶¼ÒÀ´ÎÍùÏÂÔö¼Ó0x01000000L + 0x1L
+//æ–°çš„APPéƒ½ä¾æ¬¡å¾€ä¸‹å¢åŠ 0x01000000L + 0x1L
 #define GAVIN_ERR_SMARTVC_APPID  (0x80000000L + 0x01000000L)		//SMARTVC APP ID
 
 #define GAVIN_DEF_ERR( module, level, errid) \
-	((HI_S32)( (GAVIN_ERR_SMARTVC_APPID) | ((module) << 16 ) | ((level)<<13) | (errid) ))
+	((int32_t)( (GAVIN_ERR_SMARTVC_APPID) | ((module) << 16 ) | ((level)<<13) | (errid) ))
 
 
 #ifdef __cplusplus
@@ -45,7 +46,7 @@ extern "C"{
 typedef enum _gavin_mode_id_e{
 	GAVIN_MODE_ID_MIN = 0,
 
-	GAVIN_MODE_ID_PUBLIC,			//Í¨ÓÃÈí¼ş¼Ü¹¹ÖĞ±¨´í
+	GAVIN_MODE_ID_PUBLIC,			//é€šç”¨è½¯ä»¶æ¶æ„ä¸­æŠ¥é”™
 	
 	GAVIN_MODE_ID_MAX,
 }gavin_mode_id_e;
