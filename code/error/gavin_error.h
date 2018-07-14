@@ -21,6 +21,7 @@ History       :
 #define __GAVIN_ERROR_H__
 
 #include "cross_platform.h"
+#include "list.h"
 
 /******************************************************************************
 |----------------------------------------------------------------|
@@ -32,12 +33,14 @@ History       :
 #define GAVIN_SUCCESS  0
 #define GAVIN_FAILURE  (-1)
 
-//æ–°çš„APPéƒ½ä¾æ¬¡å¾€ä¸‹å¢åŠ 0x01000000L + 0x1L
+//ĞÂµÄAPP¶¼ÒÀ´ÎÍùÏÂÔö¼Ó0x01000000L + 0x1L
 #define GAVIN_ERR_SMARTVC_APPID  (0x80000000L + 0x01000000L)		//SMARTVC APP ID
 
 #define GAVIN_DEF_ERR( module, level, errid) \
 	((int32_t)( (GAVIN_ERR_SMARTVC_APPID) | ((module) << 16 ) | ((level)<<13) | (errid) ))
 
+#define GAVIN_GET_MODULE_ID_BY_ERR(err_value) ((int32_t)( (err_value) & 0x00ff0000) >> 16)
+#define GAVIN_GET_ERR_ID_BY_ERR(err_value) ((int32_t)( (err_value) & 0x00001fff))
 
 #ifdef __cplusplus
 extern "C"{
@@ -46,12 +49,13 @@ extern "C"{
 typedef enum _gavin_mode_id_e{
 	GAVIN_MODE_ID_MIN = 0,
 
-	GAVIN_MODE_ID_PUBLIC,			//é€šç”¨è½¯ä»¶æ¶æ„ä¸­æŠ¥é”™
+	GAVIN_MODE_ID_PUBLIC,			//Í¨ÓÃÈí¼ş¼Ü¹¹ÖĞ±¨´í
+	GAVIN_MODE_ID_INT_MOD_CTR,		//intmodule ctrlÄ£¿é
 	
 	GAVIN_MODE_ID_MAX,
 }gavin_mode_id_e;
 
-typedef enum _gavin_err_level_e
+typedef enum _gavin_err_level_id_e
 {
 	GAVIN_ERR_LEVEL_DEBUG = 0,  /* debug-level                                  */
 	GAVIN_ERR_LEVEL_INFO,       /* informational                                */
@@ -62,13 +66,13 @@ typedef enum _gavin_err_level_e
 	GAVIN_ERR_LEVEL_ALERT,      /* action must be taken immediately             */
 	GAVIN_ERR_LEVEL_FATAL,      /* just for compatibility with previous version */
 	GAVIN_ERR_LEVEL_BUTT
-}gavin_err_level_e;
+}gavin_err_level_id_e;
 
 
 /* NOTE! the following defined all common error code,
 ** all module must reserved 0~63 for their common error code
 */
-typedef enum _gavin_err_code_e
+typedef enum _gavin_err_code_id_e
 {
     GAVIN_ERR_INVALID_DEVID = 1, /* invlalid device ID                           */
     GAVIN_ERR_INVALID_CHNID = 2, /* invlalid channel ID                          */
@@ -104,8 +108,7 @@ typedef enum _gavin_err_code_e
 
     GAVIN_ERR_BUTT          = 63,/* maxium code, private error code of all modules
                               ** must be greater than it                      */
-}gavin_err_code_e;
-
+}gavin_err_code_id_e;
 
 /* 
 ** following is an example for defining error code of VDA module
@@ -113,7 +116,42 @@ typedef enum _gavin_err_code_e
 **
 */
 
+//err info table
+#define INVALID_DEVID		"invalid device id"
+#define INVALID_CHNID		"invalid channel id"
+#define ILLEGAL_PARAM		"illegal param"
+#define EXIST				"resource exist"
+#define UNEXIST				"resource unexist"
+#define NULL_PTR			"null point"
+#define NOT_CONFIG			"not configure attribute before used"
+#define NOT_SUPPORT			"operation or type is not supported by NOW"
+#define NOT_PERM			"operation is not permitted"
+#define NOT_NOMEM			"failure caused by malloc memory"
+#define NOT_NOBUF			"failure caused by malloc buffer"
+#define BUF_EMPTY			"no data in buffer"
+#define BUF_FULLE			"no buffer for new data"
+#define SYS_NOTREADY		"System is not ready,maybe not initialed or loaded"
+#define BADADDR				" bad address"
+#define BUSY				"resource is busy"
+#define ERR_MODULE_ID		"invalid device id"
+#define ERR_PARSE_JSON		"parse json failed"
+#define JSON_OBJ_EMPTY		"json data is empty"
+#define SET_EMPTY			"json set is empty"
+#define MATCH				"match failure"
 
+typedef int (*get_err_info_cb_t)(int err_value, char *out_buf, int buf_size);
+int32_t gavin_err_get_err_reason(int32_t err_value, char *out_buf, int32_t buf_size);
+int32_t gavin_err_unregister_output_func(int32_t module_id);
+int32_t gavin_err_register_output_func(int32_t module_id, const char*module_name, get_err_info_cb_t get_err_info_cb);
+
+//**********Ò»Ì×¸øÍâ²¿¹ÜÀí´íÎóID¸ú´íÎóÏêÏ¸ÃèÊöµÄ½Ó¿Ústart***************/
+int32_t gavin_err_info_list_add_node(struct list_head *list_head, int32_t err_id, const char *err_info);
+int32_t gavin_err_info_list_del_node(struct list_head *list_head, int32_t err_id);
+int32_t gavin_err_info_list_find_err_info(struct list_head *list_head, int32_t err_id, char *out_buf, int32_t buf_size);
+int32_t gavin_err_info_list_init(struct list_head *list_head);
+int32_t gavin_err_info_list_uninit(struct list_head *list_head);
+
+//**********Ò»Ì×¸øÍâ²¿¹ÜÀí´íÎóID¸ú´íÎóÏêÏ¸ÃèÊöµÄ½Ó¿Ú end***************/
 #ifdef __cplusplus
 };
 #endif

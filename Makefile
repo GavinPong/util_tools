@@ -40,6 +40,7 @@ all:
 	cd ./code/filefunc && make
 	cd ./code/strfunc && make
 	cd ./code/list && make
+	cd ./code/error && make
 	cd ./demo && make 
 	make $(TARGET)
 
@@ -58,6 +59,7 @@ clean:
 	cd ./code/inirw && make clean
 	cd ./code/strfunc && make clean
 	cd ./code/list && make clean
+	cd ./code/error && make clean
 	cd ./demo && make clean
 	cd ./code/filefunc && make clean
 	rm $(TARGET) -rf 
@@ -68,6 +70,7 @@ distclean:
 	cd ./code/inirw && make distclean
 	cd ./code/strfunc && make distclean
 	cd ./code/list && make distclean
+	cd ./code/error && make distclean
 	cd ./demo && make distclean
 	cd ./code/filefunc && make distclean
 	rm $(TARGET) -rf
