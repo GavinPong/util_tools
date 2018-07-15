@@ -1,13 +1,12 @@
 export   CHIP_TYPE := HI_3531A
 #export   CHIP_TYPE := HI_3519
 
-TOP_PATH := /home/share_disk/workspace/code/SmartVC/mdd_and_utiltools_20180713/util_tools/code
+TOP_PATH := /home/share_disk/workspace/code/util_tools
 
 #tools_chain
 ifeq ($(CHIP_TYPE), HI_3531A)
 
 TOOL_CHAIN_DIR := /home/share_disk/tool_chain/3531A_030/arm-hisiv300-linux/target/bin/
-#TOOL_CHAIN_DIR := 
 CROSS_COMPILE := $(TOOL_CHAIN_DIR)arm-hisiv300-linux-
 export CHIP_SDK_DIR := /home/qfh/MyWorkSpace/sdk/HiSi/Hi3531A_SDK_V1.0.3.0/mpp
 
@@ -37,7 +36,7 @@ CROSS_PLATFORM_DIR := ./code/cross_platform
 
 #common dir end
 
-export CFLAGS := -DPLATFORM=LINUX_PLATFORM
+export CFLAGS := -DPLATFORM=LINUX_PLATFORM -Wall
 extern LDFLAGS := 
 
 

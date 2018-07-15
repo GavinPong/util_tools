@@ -8,6 +8,7 @@ DIRS_C += $(wildcard ./code/cJSON/*.c)
 DIRS_C += $(wildcard ./code/inirw/*.c)
 DIRS_C += $(wildcard ./code/strfunc/*.c)
 DIRS_C += $(wildcard ./code/list/*.c)
+DIRS_C += $(wildcard ./code/log/*.c)
 DIRS_C += $(wildcard ./code/error/*.c)
 DIRS_C += $(wildcard ./code/cross_platform/*.c)
 DIRS_C += $(wildcard ./code/filefunc/*.c)
@@ -19,9 +20,10 @@ DIRS_CPP += $(wildcard ./code/cJSON/*.cpp)
 DIRS_CPP += $(wildcard ./code/inirw/*.cpp)
 DIRS_CPP += $(wildcard ./code/strfunc/*.cpp)
 DIRS_CPP += $(wildcard ./code/list/*.cpp)
+DIRS_CPP += $(wildcard ./code/log/*.cpp)
 DIRS_CPP += $(wildcard ./code/error/*.cpp)
 DIRS_CPP += $(wildcard ./code/cross_platform/*.cpp)
-DIRS_C += $(wildcard ./code/filefunc/*.cpp)
+DIRS_CPP += $(wildcard ./code/filefunc/*.cpp)
 DIRS_CPP += $(wildcard ./demo/*.cpp)
 
 LIBOBJS_C := 
@@ -31,7 +33,7 @@ LIBOBJS_CPP :=
 LIBOBJS_CPP += $(DIRS_CPP:%.cpp=%.o)
 
 CFLAGS += 
-LDFLAGS += -lpthread -lm
+LDFLAGS += -lpthread -lm -lstdc++
 
 all:
 	cd ./code/base64 && make
@@ -40,6 +42,7 @@ all:
 	cd ./code/filefunc && make
 	cd ./code/strfunc && make
 	cd ./code/list && make
+	cd ./code/log && make
 	cd ./code/error && make
 	cd ./demo && make 
 	make $(TARGET)
@@ -59,6 +62,7 @@ clean:
 	cd ./code/inirw && make clean
 	cd ./code/strfunc && make clean
 	cd ./code/list && make clean
+	cd ./code/log && make clean
 	cd ./code/error && make clean
 	cd ./demo && make clean
 	cd ./code/filefunc && make clean
@@ -70,6 +74,7 @@ distclean:
 	cd ./code/inirw && make distclean
 	cd ./code/strfunc && make distclean
 	cd ./code/list && make distclean
+	cd ./code/log && make distclean
 	cd ./code/error && make distclean
 	cd ./demo && make distclean
 	cd ./code/filefunc && make distclean
