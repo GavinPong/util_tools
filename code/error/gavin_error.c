@@ -28,7 +28,7 @@ int32_t gavin_err_uninit()
 int32_t gavin_err_register_output_func(int32_t module_id, const char*module_name, get_err_info_cb_t get_err_info_cb)
 {
 	if (module_id >= GAVIN_MODE_ID_MAX || module_id <= GAVIN_MODE_ID_MIN \
-		|| !module_name || strlen(module_name)\
+		|| !module_name || !strlen(module_name)\
 		|| !get_err_info_cb)
 	{
 		return GAVIN_ERR_ILLEGAL_PARAM;

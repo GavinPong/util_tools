@@ -31,7 +31,7 @@ typedef struct log_ctx_s{
 	int8_t m_net_connect_thread_exit;
 }log_ctx_t;
 
-static log_ctx_t s_log_ctx;
+static log_ctx_t s_log_ctx = {0};
 
 static int32_t log_connect_net_dst(){
 	struct sockaddr_in dstaddr;
@@ -170,11 +170,11 @@ int32_t log_shutdown(){
 	log_disconnect_net_dst();
 	log_close_file();
 	pthread_mutex_destroy(&s_log_ctx.m_param_mtx);
-	pthread_mutex_destroy(&s_log_ctx.m_mtx);
 	pthread_mutex_destroy(&s_log_ctx.m_cond_mtx);
 	pthread_cond_destroy(&s_log_ctx.m_cond);
 	s_log_ctx.m_inited = 0;
 	pthread_mutex_unlock(&s_log_ctx.m_mtx);
+	pthread_mutex_destroy(&s_log_ctx.m_mtx);
 	return 0;
 }
 
@@ -206,10 +206,10 @@ int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size)
 	}
 	pthread_mutex_lock(&s_log_ctx.m_mtx);
 	time_t cur_time;
-	char datetime_str[64] = "";
+	char datetime_str[128] = "";
 
 	time(&cur_time);
-	memcpy(datetime_str, ctime(&cur_time), strlen(ctime(&cur_time)) - 1);
+	plat_sprintf(datetime_str, sizeof(datetime_str), "%s", ctime(&cur_time));
 	switch (log_level)
 	{
 	case LOG_LEVEL_SCREEN:
