@@ -33,6 +33,8 @@ extern "C"{
 #define STRFMT_ADDR32_2  "0x%08lX"
 
 extern int32_t StrToNumber(char *str , uint32_t * ulValue);
+//保证dstbuf一定有\0结尾
+int32_t strncpy_ex(char *dstbuf, const char *srcbuf, int32_t dst_size);
 
 
 #ifdef __cplusplus
