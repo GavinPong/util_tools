@@ -77,8 +77,10 @@
   <ItemGroup>
     <ClCompile Include="code\base64\base64.cpp" />
     <ClCompile Include="code\cjson\cJSON.c" />
+    <ClCompile Include="code\error\gavin_error.c" />
     <ClCompile Include="code\filefunc\filefunc.c" />
     <ClCompile Include="code\inirw\inirw.c" />
+    <ClCompile Include="code\log\log.cpp" />
     <ClCompile Include="code\strfunc\strfunc.c" />
     <ClCompile Include="demo\demo.c" />
   </ItemGroup>
@@ -90,6 +92,7 @@
     <ClInclude Include="code\filefunc\filefunc.h" />
     <ClInclude Include="code\inirw\inirw.h" />
     <ClInclude Include="code\list\list.h" />
+    <ClInclude Include="code\log\log.h" />
     <ClInclude Include="code\strfunc\strfunc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

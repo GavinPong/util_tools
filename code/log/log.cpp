@@ -210,6 +210,11 @@ int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size)
 
 	time(&cur_time);
 	plat_sprintf(datetime_str, sizeof(datetime_str), "%s", ctime(&cur_time));
+	if (strlen(datetime_str) > 1)
+	{
+			datetime_str[strlen(datetime_str) - 1] = '\0';
+	}
+
 	switch (log_level)
 	{
 	case LOG_LEVEL_SCREEN:

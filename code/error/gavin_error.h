@@ -53,7 +53,7 @@ typedef enum _gavin_mode_id_e{
 	GAVIN_MODE_ID_INT_MOD_CTR,		//intmodule ctrl模块
 	GAVIN_MODE_ID_INT_MOD_DUMMY,		//intmodule dummy模块
 	GAVIN_MODE_ID_INT_MOD_REC_MUXER,		//intmodule rec muxer模块
-	
+	GAVIN_MODE_ID_INT_MOD_HISI,		//intmodule hisi模块
 	GAVIN_MODE_ID_MAX,
 }gavin_mode_id_e;
 
@@ -142,6 +142,7 @@ typedef enum _gavin_err_code_id_e
 #define MATCH				"match failure"
 #define INITED				"Already initialized"
 #define INVALID_MUXTYPE		"invalid rec muxer type"
+#define FRAME_RATE		"frame rate anomaly"
 
 typedef int (*get_err_info_cb_t)(int err_value, char *out_buf, int buf_size);
 int32_t gavin_err_get_err_reason(int32_t err_value, char *out_buf, int32_t buf_size);
