@@ -18,12 +18,6 @@ typedef struct log_param_s{
 	char m_pathname[256];
 }log_param_t;
 
-#define LOG_PACKAGE_STR(str) {\
-		char log_str[512] = "";\
-		plat_sprintf(log_str, sizeof(log_str),"%s->%d: %s", __FILE__, __LINE__, #str);\
-		log_output(LOG_LEVEL_FILE_SCREEN, log_str, strlen(log_str));\
-}
-
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -35,7 +29,7 @@ int32_t log_shutdown();
 //支持运行时调整日志输出目的地
 int32_t log_modify_param(log_param_t log_param);
 //输出日志
-int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size);
+int32_t log_output(log_level_e log_level, const char *fmt, ...);
 
 #ifdef __cplusplus
 }

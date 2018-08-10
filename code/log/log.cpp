@@ -13,6 +13,7 @@
 // #include <pthread.h>
 // #include <stddef.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <time.h>
 #include <string.h>
 #include "cross_platform.h"
@@ -199,6 +200,7 @@ int32_t log_modify_param(log_param_t log_param){
 	return 0;
 }
 
+/*
 int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size){
 	if (!log_str || !str_size)
 	{
@@ -228,6 +230,195 @@ int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size)
 			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
 			write(s_log_ctx.m_fd, "]", 1);
 			write(s_log_ctx.m_fd,  log_str, str_size);
+			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
+		}
+		break;
+	case LOG_LEVEL_NET:
+		if (s_log_ctx.m_sockfd > 0)
+		{
+			send(s_log_ctx.m_sockfd, "[", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+			send(s_log_ctx.m_sockfd, "]", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
+		}
+		break;
+	case LOG_LEVEL_FILE_SCREEN:
+		printf("[%s]", datetime_str);
+		printf("%s\r\n", log_str);
+		if (s_log_ctx.m_fd > 0)
+		{
+			write(s_log_ctx.m_fd, "[", 1);
+			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
+			write(s_log_ctx.m_fd, "]", 1);
+			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
+			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
+		}
+		break;
+	case LOG_LEVEL_NET_SCREEN:
+		printf("[%s]", datetime_str);
+		printf("%s\r\n", log_str);
+		if (s_log_ctx.m_sockfd)
+		{
+			send(s_log_ctx.m_sockfd, "[", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+			send(s_log_ctx.m_sockfd, "]", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+		}
+		break;
+	case LOG_LEVEL_NET_FILE_SCREEN:
+		printf("%s", datetime_str);
+		printf("%s\r\n", log_str);
+		if (s_log_ctx.m_fd > 0)
+		{
+			write(s_log_ctx.m_fd, "[", 1);
+			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
+			write(s_log_ctx.m_fd, "]", 1);
+			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
+			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
+		}
+		if (s_log_ctx.m_sockfd)
+		{
+			send(s_log_ctx.m_sockfd, "[", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+			send(s_log_ctx.m_sockfd, "]", 1, 0);
+			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
+			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
+		}
+		break;
+	default:
+		printf("%s", datetime_str);
+		printf("%s\r\n", log_str);
+		break;
+	}
+	pthread_mutex_unlock(&s_log_ctx.m_mtx);
+	return 0;
+}
+*/
+int32_t log_output(log_level_e log_level, const char *fmt, ...){
+	va_list ap;
+	va_start(ap, fmt);
+#define  LOGSTR_BUF_MAX 2048
+	const char* p = fmt;
+	char log_str[LOGSTR_BUF_MAX];
+	char tmp_str[1024];
+	int32_t log_str_indx = 0;
+	int length = 0, i = 0;
+	
+	while(*p && log_str_indx < LOGSTR_BUF_MAX - 1)
+	{
+		memset(tmp_str, 0, length);
+		if ('%' == *p)
+		{
+			p++;
+			if ('d' == *(p))	//Ê®½øÖÆ
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%d",va_arg(ap, int32_t));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('s' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%s",va_arg(ap, char *));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('x' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%x",va_arg(ap, int32_t));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('f' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%f",va_arg(ap, double));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('i' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%i",va_arg(ap, int32_t));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('u' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%u",va_arg(ap, uint32_t));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('p' == *(p))
+			{
+				plat_sprintf(tmp_str, sizeof(tmp_str),"%p",va_arg(ap, int32_t *));
+				length = strlen(tmp_str);
+				for(i = 0;i < length;i++)
+				{
+					log_str[log_str_indx++] = tmp_str[i];
+				}
+			}
+			else if('c' == *(p))
+			{
+				log_str[log_str_indx++] = va_arg(ap, int32_t);
+			}
+			else
+			{
+				log_str[log_str_indx++] = *p;
+			}
+			p++;
+		}
+		else
+		{
+			log_str[log_str_indx++] = *p;
+			p++;
+		}
+		va_end(ap);
+	}
+	if (log_str_indx < LOGSTR_BUF_MAX - 1)
+	{
+		log_str[log_str_indx++] = '\0';
+	}
+	pthread_mutex_lock(&s_log_ctx.m_mtx);
+	time_t cur_time;
+	char datetime_str[128] = "";
+
+	time(&cur_time);
+	plat_sprintf(datetime_str, sizeof(datetime_str), "%s", ctime(&cur_time));
+	if (strlen(datetime_str) > 1)
+	{
+		datetime_str[strlen(datetime_str) - 1] = '\0';
+	}
+
+	switch (log_level)
+	{
+	case LOG_LEVEL_SCREEN:
+		printf("[%s]", datetime_str);
+		printf("%s\r\n", log_str);
+		break;
+	case LOG_LEVEL_FILE:
+		if (s_log_ctx.m_fd > 0)
+		{
+			write(s_log_ctx.m_fd, "[", 1);
+			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
+			write(s_log_ctx.m_fd, "]", 1);
+			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
 			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
 		}
 		break;
