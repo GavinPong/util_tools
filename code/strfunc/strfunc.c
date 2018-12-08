@@ -176,13 +176,17 @@ int32_t strncpy_ex(char *dstbuf, const char *srcbuf, int32_t dst_size)
 		return -1;
 	}
 	int32_t cpy_cnt = 0;
-	int32_t success_cnt = 0;
+	char *pRet = 0;
 	
 	cpy_cnt = dst_size > strlen(srcbuf) + 1?strlen(srcbuf):dst_size - 1;
-	success_cnt = strncpy(dstbuf, srcbuf, cpy_cnt);
+	pRet = strncpy(dstbuf, srcbuf, cpy_cnt);
 	dstbuf[cpy_cnt] = '\0';
 
-	return success_cnt;
+	if (pRet)
+	{
+		return 0;
+	}
+	return -2;
 }
 
 

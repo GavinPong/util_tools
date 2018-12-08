@@ -130,7 +130,6 @@ int32_t gavin_err_info_list_del_node(struct list_head *list_head, int32_t err_id
 	{
 		return GAVIN_ERR_NULL_PTR;
 	}
-	int32_t flag = 0;
 	struct list_head *head = list_head;
 	err_info_list_node_t *cur, *next;
 	list_for_each_entry_safe(err_info_list_node_t, cur, next, head, m_list)
