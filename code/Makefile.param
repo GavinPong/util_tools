@@ -37,7 +37,7 @@ CROSS_PLATFORM_DIR := $(TOP_PATH)/code/cross_platform
 #common dir end
 
 export CFLAGS := -DPLATFORM=LINUX_PLATFORM
-extern LDFLAGS := 
+export LDFLAGS := 
 
 
 export  NFS_DIR := /home/disk2/zp/work_space/exe_name
