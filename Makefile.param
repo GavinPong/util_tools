@@ -1,7 +1,7 @@
-export   CHIP_TYPE := HI_3531A
+#export   CHIP_TYPE := HI_3531A
 #export   CHIP_TYPE := HI_3519
 
-TOP_PATH := /home/share_disk/workspace/code/util_tools
+TOP_PATH := /home/share/zp/workspace/test/util_tools
 
 #tools_chain
 ifeq ($(CHIP_TYPE), HI_3531A)

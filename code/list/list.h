@@ -2,24 +2,26 @@
 #define __LIST_H__
 
 #include <stddef.h>
-//#include <typeinfo.h>
-#include "cross_platform.h"
 
-typedef struct list_head{
-	struct list_head *next, *prev;
-}LIST_HEAD, *PLIST_HEAD;
+#ifdef _cplusplus
+extern "C"{
+#endif
+
+typedef struct _list_head_t{
+	struct _list_head_t *next, *prev;
+}list_head_t, *plist_head;
 
 #define container_of(ptr, type, member)		(type *)((char *)ptr - offsetof(type, member))
 
 #define LIST_HEAD_INIT(name) {&(name), &(name)}
 
-static inline void INIT_LIST_HEAD(PLIST_HEAD list)
+static inline void init_list_head(plist_head list)
 {
 	list->next = list;
 	list->prev = list;
 }
 
-static inline void __list_add(PLIST_HEAD cur, PLIST_HEAD prev, PLIST_HEAD next)
+static inline void __list_add(plist_head cur, plist_head prev, plist_head next)
 {
 	cur->prev = prev;
 	cur->next = next;
@@ -27,41 +29,41 @@ static inline void __list_add(PLIST_HEAD cur, PLIST_HEAD prev, PLIST_HEAD next)
 	prev->next = cur;
 }
 
-static inline void list_add(PLIST_HEAD cur, PLIST_HEAD head)
+static inline void list_add(plist_head cur, plist_head head)
 {
 	__list_add(cur, head, head->next);
 }
 
-static inline void list_add_tail(PLIST_HEAD cur, PLIST_HEAD head)
+static inline void list_add_tail(plist_head cur, plist_head head)
 {
 	__list_add(cur, head->prev, head);
 }
 
-static inline void _list_del(PLIST_HEAD prev, PLIST_HEAD next)
+static inline void _list_del(plist_head prev, plist_head next)
 {
 	next->prev = prev;
 	prev->next = next;
 }
 
-static inline void list_del(PLIST_HEAD entry)
+static inline void list_del(plist_head entry)
 {
 	_list_del(entry->prev, entry->next);
 	entry->next = NULL;
 	entry->prev = NULL;
 }
 
-static inline int32_t list_empty(const PLIST_HEAD head)
+static inline int list_empty(const plist_head head)
 {
 	return head->next == head;
 }
 
-static inline int32_t list_empty_careful(const PLIST_HEAD head)
+static inline int list_empty_careful(const plist_head head)
 {
-	PLIST_HEAD next = head->next;
+	plist_head next = head->next;
 	return (next == head) && (next == head->prev);
 }
 
-static inline PLIST_HEAD list_get_tail(PLIST_HEAD head)
+static inline plist_head list_get_tail(plist_head head)
 {
 	return head->prev;
 }
@@ -98,5 +100,10 @@ static inline PLIST_HEAD list_get_tail(PLIST_HEAD head)
 	for(pos = list_entry((head)->prev, type, member);	\
 		pos->member != (head);	\
 		pos = list_entry(pos->member.prev, type, member))
+
+
+#ifdef _cplusplus
+}
+#endif
 
 #endif

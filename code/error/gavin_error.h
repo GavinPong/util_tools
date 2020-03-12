@@ -68,84 +68,76 @@ extern "C"{
 #endif
 
 typedef enum _gavin_mode_id_e{
-	GAVIN_MODE_ID_MIN = 0,
+	GAVIN_MODID_MIN = 0,
 
-	GAVIN_MID_PUBLIC,			//通用软件架构中报错
-	GAVIN_MID_MODDUMMY,			//intmodule dummy模块
-	GAVIN_MID_RECMUXER,			//intmodule rec muxer模块
-	GAVIN_MID_HISI,				//intmodule hisi模块
-	GAVIN_MODE_ID_MAX,
+	GAVIN_MODID_PUBLIC,			//通用软件架构中报错
+	GAVIN_MODID_MODCTR,		//intmodule ctrl模块
+	GAVIN_MODID_DUMMY,		//intmodule dummy模块
+	GAVIN_MODID_RECMUXER,		//intmodule rec muxer模块
+	GAVIN_MODID_HISI,		//intmodule hisi模块
+	
+	GAVIN_MODID_MAX,
 }gavin_mode_id_e;
-
-typedef enum _gavin_elevel_e
-{
-	GAVIN_ELEVEL_DEBUG = 0,  /* debug-level                                  */
-	GAVIN_ELEVEL_INFO,       /* informational                                */
-	GAVIN_ELEVEL_NOTICE,     /* normal but significant condition             */
-	GAVIN_ELEVEL_WARNING,    /* warning conditions                           */
-	GAVIN_ELEVEL_ERROR,      /* error conditions                             */
-	GAVIN_ELEVEL_CRIT,       /* critical conditions                          */
-	GAVIN_ELEVEL_ALERT,      /* action must be taken immediately             */
-	GAVIN_ELEVEL_FATAL,      /* just for compatibility with previous version */
-	GAVIN_ELEVEL_BUTT
-}gavin_elevel_e;
 
 
 /* NOTE! the following defined all common error code,
 ** all module must reserved 0~63 for their common error code
 ** member must be assigned for compatibility
 */
-typedef enum _gavin_ecode_id_e
+typedef enum _gavin_err_code_id_e
 {
-    GAVIN_EINVADEVID = 1, /* invlalid device ID                           */
-    GAVIN_EINVACHNID = 2, /* invlalid channel ID                          */
-    GAVIN_EILLEGALPARAM = 3, /* at lease one parameter is illagal
+	GAVIN_OK 				= 0,
+	GAVIN_FALSE 			= 1,
+	GAVIN_EINVADEVID 		= 2, /* invlalid device ID                           */
+    GAVIN_EINVACHNID 		= 3, /* invlalid channel ID                          */
+    GAVIN_EILLEGALPARAM 	= 4, /* at lease one parameter is illagal
                                * eg, an illegal enumeration value             */
-    GAVIN_EEXIST         = 4, /* resource exists                              */
-    GAVIN_EUNEXIST       = 5, /* resource unexists                            */
+    GAVIN_EEXIST         	= 5, /* resource exists                              */
+    GAVIN_EUNEXIST       	= 6, /* resource unexists                            */
     
-    GAVIN_ENULLPTR      = 6, /* using a NULL point                           */
+    GAVIN_ENULLPTR      	= 7, /* using a NULL point                           */
     
-    GAVIN_ENOTCONFIG    = 7, /* try to enable or initialize system, device
+    GAVIN_ENOTCONFIG    	= 8, /* try to enable or initialize system, device
                               ** or channel, before configing attribute       */
 
-    GAVIN_ENOTSUPPORT   = 8, /* operation or type is not supported by NOW    */
-    GAVIN_ENOTPERM      = 9, /* operation is not permitted
+    GAVIN_ENOTSUPPORT   	= 9, /* operation or type is not supported by NOW    */
+    GAVIN_ENOTPERM      	= 10, /* operation is not permitted
                               ** eg, try to change static attribute           */
 
-    GAVIN_ENOMEM         = 12,/* failure caused by malloc memory              */
-    GAVIN_ENOBUF         = 13,/* failure caused by malloc buffer              */
+    GAVIN_ENOMEM         	= 11,/* failure caused by malloc memory              */
+    GAVIN_ENOBUF         	= 12,/* failure caused by malloc buffer              */
 
-    GAVIN_EBUFEMPTY     = 14,/* no data in buffer                            */
-    GAVIN_EBUFFULL      = 15,/* no buffer for new data                       */
+    GAVIN_EBUFEMPTY     	= 13,/* no data in buffer                            */
+    GAVIN_EBUFFULL      	= 14,/* no buffer for new data                       */
 
-    GAVIN_ESYSNOTREADY  = 16,/* System is not ready,maybe not initialed or 
+    GAVIN_ESYSNOTREADY  	= 15,/* System is not ready,maybe not initialed or 
                               ** loaded. Returning the error code when opening
                               ** a device file failed.                        */
 
-    GAVIN_EBADADDR       = 17,/* bad address, 
+    GAVIN_EBADADDR       	= 16,/* bad address, 
                               ** eg. used for copy_from_user & copy_to_user   */
 
-    GAVIN_EBUSY          = 18,/* resource is busy, 
+    GAVIN_EBUSY          	= 17,/* resource is busy, 
                               ** eg. destroy a venc chn without unregister it */
-	GAVIN_EMODULEID		= 19,/* invalid device id */
+	GAVIN_EMODULEID			= 18,/* invalid device id */
 
-	GAVIN_EPARSEJSON	= 20,/* parse json failed */
+	GAVIN_EPARSEJSON		= 19,/* parse json failed */
 						  
-	GAVIN_EJSONOBJEMPTY = 21,/* json data is empty */
-	GAVIN_EJSONSETEMPTY = 22,/* json set is empty */
+	GAVIN_EJSONOBJEMPTY 	= 20,/* json data is empty */
+	GAVIN_EJSONSETEMPTY 	= 21,/* json set is empty */
 
-	GAVIN_EMATCH			= 23,/* match failure */
-	GAVIN_EINITED		= 24,/* Already initialized */
+	GAVIN_EMATCH			= 22,/* match failure */
+	GAVIN_EUNINITED			= 23,/* no initialized */
+	GAVIN_EINITED			= 23,/* Already initialized */
 					  
-	GAVIN_EMUXTYPE		= 25,/* invalid rec muxer type  */
+	GAVIN_EMUXTYPE			= 24,/* invalid rec muxer type  */
 						  
-	GAVIN_EFRAMERATE	= 26,/* frame rate anomaly*/
+	GAVIN_EFRAMERATE		= 25,/* frame rate anomaly*/
 						  
 
     GAVIN_EBUTT          = 63,/* maxium code, private error code of all modules
                               ** must be greater than it                      */
-}gavin_ecode_id_e;
+}gavin_err_code_id_e;
 
 /* 
 ** following is an example for defining error code of VDA module
@@ -154,44 +146,45 @@ typedef enum _gavin_ecode_id_e
 */
 
 //err info table
-#define EINVALID_DEVID_STR			"invalid device id"
-#define EINVALID_CHNID_STR			"invalid channel id"
-#define EILLEGAL_PARAM_STR			"illegal param"
-#define EEXIST_STR					"resource exist"
-#define EUNEXIST_STR				"resource unexist"
-#define ENULL_PTR_STR				"null point"
-#define ENOT_CONFIG_STR				"not configure attribute before used"
-#define ENOT_SUPPORT_STR			"operation or type is not supported by NOW"
-#define ENOT_PERM_STR				"operation is not permitted"
-#define ENOT_NOMEM_STR				"failure caused by malloc memory"
-#define ENOT_NOBUF_STR				"failure caused by malloc buffer"
-#define EBUF_EMPTY_STR				"no data in buffer"
-#define EBUF_FULLE_STR				"no buffer for new data"
-#define ESYS_NOTREADY_STR			"System is not ready,maybe not initialed or loaded"
-#define EBADADDR_STR				" bad address"
-#define EBUSY_STR					"resource is busy"
-#define EMODULE_ID_STR				"invalid module id"
-#define EPARSE_JSON_STR				"parse json failed"
-#define EJSON_OBJ_EMPTY_STR			"json data is empty"
-#define EJSON_SET_EMPTY_STR			"json set is empty"
-#define EMATCH_STR					"match failure"
-#define EINITED_STR					"Already initialized"
-#define EINVALID_MUXTYPE_STR		"invalid rec muxer type"
-#define EFRAME_RATE_STR				"frame rate anomaly"
+#define EINVADEVIDSTR			"invalid device id"
+#define EINVACHNIDSTR			"invalid channel id"
+#define EILLEGALPARAMSTR			"illegal param"
+#define EEXISTSTR					"resource exist"
+#define EUNEXISTSTR					"resource unexist"
+#define ENULLPTRSTR				"null point"
+#define ENOTCONFIGSTR				"not configure attribute before used"
+#define ENOTSUPPORTSTR				"operation or type is not supported by NOW"
+#define ENOTPERMSTR				"operation is not permitted"
+#define ENOTNOMEMSTR				"failure caused by malloc memory"
+#define ENOTNOBUFSTR				"failure caused by malloc buffer"
+#define EBUFEMPTYSTR				"no data in buffer"
+#define EBUFFULLESTR				"no buffer for new data"
+#define ESYSNOTREADYSTR			"System is not ready,maybe not initialed or loaded"
+#define EBADADDRSTR					" bad address"
+#define EBUSYSTR					"resource is busy"
+#define EMODULEIDSTR				"invalid module id"
+#define EPARSEJSONSTR				"parse json failed"
+#define EJSONOBJEMPTYSTR			"json data is empty"
+#define EJSONSETEMPTYSTR				"json set is empty"
+#define EMATCHSTR					"match failure"
+#define EUNINITEDSTR					"No initialized"
+#define EINITEDSTR					"Already initialized"
+#define EINVAMUXTYPESTR			"invalid rec muxer type"
+#define EFRAMERATESTR				"frame rate anomaly"
 
 int32_t gavin_err_init();
 int32_t gavin_err_uninit();
-typedef int32_t (*get_custom_err_info_cb_t)(int32_t err_value, int8_t *out_buf, int32_t buf_size);
-int32_t gavin_err_get_err_reason(int32_t err_value, int8_t *out_buf, int32_t buf_size);
+typedef int32_t (*get_custom_err_info_cb_t)(int32_t i32ErrValue, int8_t *pOutBuf, int32_t i32BufSize);
+int32_t gavin_err_get_err_reason(int32_t i32ErrValue, int8_t *pOutBuf, int32_t i32BufSize);
 
 //**********一套给外部管理错误ID跟错误详细描述的接口start***************/
-int32_t gavin_err_unregister_output_func(int32_t module_id);
-int32_t gavin_err_register_output_func(int32_t module_id, const int8_t *module_name, get_custom_err_info_cb_t get_err_info_cb);
-int32_t gavin_err_info_list_add_node(struct list_head *list_head, int32_t err_id, const int8_t *err_info);
-int32_t gavin_err_info_list_del_node(struct list_head *list_head, int32_t err_id);
-int32_t gavin_err_info_list_find_err_info(struct list_head *list_head, int32_t err_id, int8_t *out_buf, int32_t buf_size);
-int32_t gavin_err_info_list_init(struct list_head *list_head);
-int32_t gavin_err_info_list_uninit(struct list_head *list_head);
+int32_t gavin_err_unregister_output_func(int32_t i32ErrValue);
+int32_t gavin_err_register_output_func(int32_t i32ModuleID, const int8_t *pstrModuleName, get_custom_err_info_cb_t getErrInfoCb);
+int32_t gavin_err_info_list_add_node(list_head_t *pstListHead, int32_t i32ErrID, const int8_t *pErrInfo);
+int32_t gavin_err_info_list_del_node(list_head_t *pstListHead, int32_t i32ErrID);
+int32_t gavin_err_info_list_find_err_info(list_head_t *pstListHead, int32_t i32ErrID, int8_t *pOutBuf, int32_t i32BufSize);
+int32_t gavin_err_info_list_init(list_head_t *pstListHead);
+int32_t gavin_err_info_list_uninit(list_head_t *pstListHead);
 
 //**********一套给外部管理错误ID跟错误详细描述的接口 end***************/
 #ifdef __cplusplus

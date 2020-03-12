@@ -1,382 +1,160 @@
-// #include <stdio.h>
-// #include <sys/types.h>
-// #include <sys/stat.h>
-// #include <fcntl.h>
-// #include <string.h>
-// #include <time.h>
-// #include <sys/types.h>          /* See NOTES */
-// #include <sys/socket.h>
-// #include <sys/select.h>
-// #include <netinet/in.h>
-// #include <unistd.h>
-// #include "log.h"
-// #include <pthread.h>
-// #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
-#include "cross_platform.h"
+#include <stdint.h>
 #include "log.h"
+#include "gavin_error.h"
+#if WIN32
+#include<windows.h>
+#else
+#include <sys/time.h>
+#endif
+#include "err_public_def.h"
 
 typedef struct log_ctx_s{
 	int8_t m_inited;						//是否启动
-	int32_t m_fd;							//文件句柄
-	int32_t m_sockfd;						//套接字句柄
-	log_param_t m_param;				//日志参数
-	pthread_mutex_t m_param_mtx;		//互斥锁
-	pthread_mutex_t m_mtx;				//互斥锁
-	pthread_mutex_t m_cond_mtx;			//互斥锁
-	pthread_cond_t m_cond;				//条件锁
-	pthread_t m_net_connect_thread;
-	int8_t m_net_connect_thread_exit;
+	log_level_e m_eLogLevel;
+	output_func_callback_t m_outptCb;			
+	flush_func_callback_t m_flushCb;			
 }log_ctx_t;
+
+static const char* s_log_Level_name[LOG_LEVELS_NUM] =
+{
+  " TRACE",
+  " DEBUG",
+  " INFO",
+  " NOTICE",
+  " WARN",
+  " ERROR",
+  " CRIT",
+  " ALERT",
+  " FATAL",
+};
 
 static log_ctx_t s_log_ctx = {0};
 
-static int32_t log_connect_net_dst(){
-	struct sockaddr_in dstaddr;
-	struct timeval timeo;
+static void default_output(const int8_t* pMsg, int32_t i32Len)
+{
+  size_t n = fwrite(pMsg, 1, i32Len, stdout);
+  //FIXME check n
 
-	if (s_log_ctx.m_sockfd > 0)
-	{
-		shutdown(s_log_ctx.m_sockfd, 2);
-		close(s_log_ctx.m_sockfd);
-	}
-	s_log_ctx.m_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (s_log_ctx.m_sockfd < 0)
-	{
-		return -1;
-	}
-	pthread_mutex_lock(&s_log_ctx.m_param_mtx);
-	memset(&dstaddr, 0, sizeof(dstaddr));
-	dstaddr.sin_family = AF_INET;
-	dstaddr.sin_addr.s_addr = htonl(s_log_ctx.m_param.m_dst_ip);
-	dstaddr.sin_port = htons(s_log_ctx.m_param.m_dst_port);
-	pthread_mutex_unlock(&s_log_ctx.m_param_mtx);
-	socklen_t len = sizeof(struct timeval);
-	//timeout
-	timeo.tv_sec = 3;
-	timeo.tv_usec = 0;
-	setsockopt(s_log_ctx.m_sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeo, len);
-
-	if(connect(s_log_ctx.m_sockfd, (struct sockaddr *)&dstaddr, sizeof(dstaddr)))
-	{
-		shutdown(s_log_ctx.m_sockfd, 2);
-		close(s_log_ctx.m_sockfd);
-		s_log_ctx.m_sockfd = -1;
-		return -2;
-	}
-	pthread_mutex_lock(&s_log_ctx.m_cond_mtx);
-	pthread_cond_wait(&s_log_ctx.m_cond,&s_log_ctx.m_cond_mtx);
-	pthread_mutex_unlock(&s_log_ctx.m_param_mtx);
-	return 0;
+  (void)n;
 }
 
-static int32_t log_disconnect_net_dst(){
-	if (s_log_ctx.m_sockfd < 0)
-	{
-		return 0;
-	}
-	shutdown(s_log_ctx.m_sockfd, 2);
-	close(s_log_ctx.m_sockfd);
-	s_log_ctx.m_sockfd = -1;
-
-	return 0;
+static void default_flush()
+{
+  fflush(stdout);
 }
 
-static int32_t log_open_file(){
-	if (s_log_ctx.m_fd)
-	{
-		close(s_log_ctx.m_fd);
-	}
-	s_log_ctx.m_fd = open(s_log_ctx.m_param.m_pathname, O_RDWR | O_CREAT | O_APPEND, 0666);
-	if (s_log_ctx.m_fd < 0)
-	{
-		printf("open %s failed width:%d\n", s_log_ctx.m_param.m_pathname, errno);
-		return -1;
-	}
+inline int32_t get_time_str(int8_t *buf, int32_t i32BufSize)
+{
+#ifdef WIN32
+	SYSTEMTIME tm_cur;
 
+	GetSystemTime(&tm_cur);
+	return snprintf(buf, i32BufSize, "[%04d%02d%02d %02d:%02d:%02d.%d - ", 
+		tm_cur.wYear + 1900, tm_cur.wMonth + 1, tm_cur.wDay, tm_cur.wHour, tm_cur.wMinute, tm_cur.wSecond, tm_cur.wMilliseconds);
+#else
+	struct tm tm_cur;
+	time_t curtime;
+	struct  timeval tv;
 	
-	return 0;
+	gettimeofday(&tv, NULL);
+	curtime = tv.tv_sec;
+	gmtime_r(&curtime, &tm_cur);
+	return snprintf((char *)buf, i32BufSize, "[%04d%02d%02d %02d:%02d:%02d.%ld - ", tm_cur.tm_year + 1900, tm_cur.tm_mon + 1, tm_cur.tm_mday, tm_cur.tm_hour, tm_cur.tm_min, tm_cur.tm_sec, tv.tv_usec % 1000);
+#endif	
 }
 
-static int32_t log_close_file(){
-	if (s_log_ctx.m_fd < 0)
-	{
-		return 0;
-	}
-	close(s_log_ctx.m_fd);
-	s_log_ctx.m_fd = -1;
-
-	return 0;
-}
-
-void *log_net_connect_thread(void *param){
-
-	log_ctx_t *p_log_ctx = (log_ctx_t *)param;
-
-	while (!p_log_ctx->m_net_connect_thread_exit)
-	{
-		if(log_connect_net_dst() < 0)
-		{
-			Msleep(1000);
-		}
-	}
-	return NULL;
-}
-
-//启动日志模块
-int32_t log_startup(log_param_t *log_param){
-	if (!log_param)
-	{
-		return -1;
-	}
-	pthread_t thread_id;
+int32_t log_startup(log_level_e eLevel)
+{
+	if(s_log_ctx.m_inited)
+		return ERR_PUB_EINITED;
+	memset(&s_log_ctx, 0, sizeof(log_ctx_t));
 	s_log_ctx.m_inited = 1;
-	s_log_ctx.m_net_connect_thread_exit = 0;
-	memset(&s_log_ctx.m_net_connect_thread, 0, sizeof(pthread_t));
-	pthread_mutex_init(&s_log_ctx.m_param_mtx, NULL);
-	pthread_mutex_init(&s_log_ctx.m_mtx, NULL);
-	pthread_mutex_init(&s_log_ctx.m_cond_mtx, NULL);
-	pthread_cond_init(&s_log_ctx.m_cond, NULL);
-	memcpy(&s_log_ctx.m_param, log_param, sizeof(s_log_ctx.m_param));
-	if(pthread_create(&thread_id,NULL, log_net_connect_thread, (void *)&s_log_ctx))
-	{
-		printf("pthread_create  log_net_connect_thread was failed.....\n");
-	}
+	if(eLevel >= LOG_E_TRACE && eLevel < LOG_LEVELS_NUM)
+		s_log_ctx.m_eLogLevel = eLevel;
 	else
-	{
-		s_log_ctx.m_net_connect_thread = thread_id;
-	}
-	log_open_file();
+		s_log_ctx.m_eLogLevel = LOG_E_DEBUG;
+	s_log_ctx.m_outptCb = default_output;
+	s_log_ctx.m_flushCb = default_flush;
 
-	return 0;
+	return ERR_PUB_OK;
 }
 
-//关闭日志模块
-int32_t log_shutdown(){
-	if (!s_log_ctx.m_inited)
-	{
-		return -1;
-	}
-	pthread_mutex_lock(&s_log_ctx.m_mtx);
-	s_log_ctx.m_net_connect_thread_exit = 1;
-
-	if (PTHREAD_IS_NULL(s_log_ctx.m_net_connect_thread))
-	{
-		pthread_join(s_log_ctx.m_net_connect_thread, NULL);
-		memset(&s_log_ctx.m_net_connect_thread, 0, sizeof(s_log_ctx.m_net_connect_thread));
-	}	
-	log_disconnect_net_dst();
-	log_close_file();
-	pthread_mutex_destroy(&s_log_ctx.m_param_mtx);
-	pthread_mutex_destroy(&s_log_ctx.m_cond_mtx);
-	pthread_cond_destroy(&s_log_ctx.m_cond);
+int32_t log_shutdown()
+{
 	s_log_ctx.m_inited = 0;
-	pthread_mutex_unlock(&s_log_ctx.m_mtx);
-	pthread_mutex_destroy(&s_log_ctx.m_mtx);
-	return 0;
+
+	return ERR_PUB_OK;
+}
+int32_t log_get_loglevel(log_level_e *eLevel)
+{
+	if(!s_log_ctx.m_inited)
+		return ERR_PUB_EUNINITED;
+	*eLevel = s_log_ctx.m_eLogLevel;	
+	return ERR_PUB_OK;
 }
 
-//支持运行时调整日志输出目的地
-int32_t log_modify_param(log_param_t log_param){
-	pthread_mutex_lock(&s_log_ctx.m_param_mtx);
-	if (strcmp(s_log_ctx.m_param.m_pathname, log_param.m_pathname))
-	{
-		log_close_file();
-		log_open_file();
-	}
-	if (s_log_ctx.m_param.m_dst_ip != log_param.m_dst_ip || \
-		s_log_ctx.m_param.m_dst_port != log_param.m_dst_port)
-	{
-		log_disconnect_net_dst();//先断开，再唤醒重连接线程
-		memcpy(&s_log_ctx.m_param, &log_param, sizeof(s_log_ctx.m_param));
-		pthread_mutex_lock(&s_log_ctx.m_cond_mtx);
-		pthread_cond_signal(&s_log_ctx.m_cond);
-		pthread_mutex_unlock(&s_log_ctx.m_param_mtx);
-	}
-	pthread_mutex_unlock(&s_log_ctx.m_param_mtx);
-	return 0;
+int32_t log_set_loglevel(log_level_e eLevel)
+{
+	if(!s_log_ctx.m_inited)
+		return ERR_PUB_EUNINITED;
+	s_log_ctx.m_eLogLevel = eLevel;	
+	return ERR_PUB_OK;
 }
 
-/*
-int32_t log_output(log_level_e log_level, const char *log_str, int32_t str_size){
-	if (!log_str || !str_size)
-	{
-		return -1;
-	}
-	pthread_mutex_lock(&s_log_ctx.m_mtx);
-	time_t cur_time;
-	char datetime_str[128] = "";
-
-	time(&cur_time);
-	plat_sprintf(datetime_str, sizeof(datetime_str), "%s", ctime(&cur_time));
-	if (strlen(datetime_str) > 1)
-	{
-			datetime_str[strlen(datetime_str) - 1] = '\0';
-	}
-
-	switch (log_level)
-	{
-	case LOG_LEVEL_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		break;
-	case LOG_LEVEL_FILE:
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, str_size);
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		break;
-	case LOG_LEVEL_NET:
-		if (s_log_ctx.m_sockfd > 0)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
-		}
-		break;
-	case LOG_LEVEL_FILE_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		break;
-	case LOG_LEVEL_NET_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_sockfd)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-		}
-		break;
-	case LOG_LEVEL_NET_FILE_SCREEN:
-		printf("%s", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		if (s_log_ctx.m_sockfd)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
-		}
-		break;
-	default:
-		printf("%s", datetime_str);
-		printf("%s\r\n", log_str);
-		break;
-	}
-	pthread_mutex_unlock(&s_log_ctx.m_mtx);
-	return 0;
-}
-*/
-int32_t log_output(log_level_e log_level, const char *fmt, ...){
-	va_list ap;
-	va_start(ap, fmt);
-#define  LOGSTR_BUF_MAX 2048
+void log_output(log_level_e eLevel, const char *fmt, va_list *ap)
+{
+	if(s_log_ctx.m_eLogLevel > eLevel) //过滤不需要输出的日志
+		return;
+	
+#define  LOGSTR_BUF_MAX 4000
 	const char* p = fmt;
 	char log_str[LOGSTR_BUF_MAX];
-	char tmp_str[1024];
 	int32_t log_str_indx = 0;
-	int length = 0, i = 0;
-	
-	while(*p && log_str_indx < LOGSTR_BUF_MAX - 1)
+	int lenTotal = sizeof(log_str);
+
+	log_str_indx = get_time_str((int8_t *)log_str + log_str_indx, LOGSTR_BUF_MAX - 2);
+	while (*p && log_str_indx < LOGSTR_BUF_MAX - 2)
 	{
-		memset(tmp_str, 0, length);
 		if ('%' == *p)
 		{
 			p++;
 			if ('d' == *(p))	//十进制
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%d",va_arg(ap, int32_t));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%d", va_arg(*ap, int32_t));
 			}
-			else if('s' == *(p))
+			else if ('s' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%s",va_arg(ap, char *));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%s", va_arg(*ap, char *));
 			}
-			else if('x' == *(p))
+			else if ('x' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%x",va_arg(ap, int32_t));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%x", va_arg(*ap, int32_t));
 			}
-			else if('f' == *(p))
+			else if ('f' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%f",va_arg(ap, double));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%f", va_arg(*ap, double));
 			}
-			else if('i' == *(p))
+			else if ('i' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%i",va_arg(ap, int32_t));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%i", va_arg(*ap, int32_t));
 			}
-			else if('u' == *(p))
+			else if ('u' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%u",va_arg(ap, uint32_t));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%u", va_arg(*ap, uint32_t));
 			}
-			else if('p' == *(p))
+			else if ('p' == *(p))
 			{
-				plat_sprintf(tmp_str, sizeof(tmp_str),"%p",va_arg(ap, int32_t *));
-				length = strlen(tmp_str);
-				for(i = 0;i < length;i++)
-				{
-					log_str[log_str_indx++] = tmp_str[i];
-				}
+				log_str_indx += snprintf(log_str + log_str_indx, lenTotal - log_str_indx, "%p", va_arg(*ap, int32_t *));
 			}
-			else if('c' == *(p))
+			else if ('c' == *(p))
 			{
-				log_str[log_str_indx++] = va_arg(ap, int32_t);
+				log_str[log_str_indx++] = va_arg(*ap, int32_t);
 			}
 			else
 			{
@@ -389,97 +167,131 @@ int32_t log_output(log_level_e log_level, const char *fmt, ...){
 			log_str[log_str_indx++] = *p;
 			p++;
 		}
-		va_end(ap);
 	}
-	if (log_str_indx < LOGSTR_BUF_MAX - 1)
+	if(log_str_indx < LOGSTR_BUF_MAX - 2)
+		log_str_indx += snprintf(log_str + log_str_indx, \
+			lenTotal - log_str_indx, "%s", s_log_Level_name[eLevel]);
+	log_str[++log_str_indx] = '\n';
+	log_str[++log_str_indx] = '\0';
+	s_log_ctx.m_outptCb((int8_t *)log_str, log_str_indx);
+	s_log_ctx.m_flushCb();
+	if(eLevel == LOG_E_FATAL)
 	{
-		log_str[log_str_indx++] = '\0';
+		abort();
 	}
-	pthread_mutex_lock(&s_log_ctx.m_mtx);
-	time_t cur_time;
-	char datetime_str[128] = "";
+}
 
-	time(&cur_time);
-	plat_sprintf(datetime_str, sizeof(datetime_str), "%s", ctime(&cur_time));
-	if (strlen(datetime_str) > 1)
-	{
-		datetime_str[strlen(datetime_str) - 1] = '\0';
-	}
+void log_output_trace(const char *fmt, ...)
+{
+	va_list ap;
 
-	switch (log_level)
-	{
-	case LOG_LEVEL_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		break;
-	case LOG_LEVEL_FILE:
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		break;
-	case LOG_LEVEL_NET:
-		if (s_log_ctx.m_sockfd > 0)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
-		}
-		break;
-	case LOG_LEVEL_FILE_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		break;
-	case LOG_LEVEL_NET_SCREEN:
-		printf("[%s]", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_sockfd)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-		}
-		break;
-	case LOG_LEVEL_NET_FILE_SCREEN:
-		printf("%s", datetime_str);
-		printf("%s\r\n", log_str);
-		if (s_log_ctx.m_fd > 0)
-		{
-			write(s_log_ctx.m_fd, "[", 1);
-			write(s_log_ctx.m_fd, datetime_str, strlen(datetime_str));
-			write(s_log_ctx.m_fd, "]", 1);
-			write(s_log_ctx.m_fd,  log_str, strlen(log_str));
-			write(s_log_ctx.m_fd,  "\r\n", strlen("\r\n"));
-		}
-		if (s_log_ctx.m_sockfd)
-		{
-			send(s_log_ctx.m_sockfd, "[", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "]", 1, 0);
-			send(s_log_ctx.m_sockfd, datetime_str, strlen(datetime_str), 0);
-			send(s_log_ctx.m_sockfd, "\r\n", strlen("\r\n"), 0);
-		}
-		break;
-	default:
-		printf("%s", datetime_str);
-		printf("%s\r\n", log_str);
-		break;
-	}
-	pthread_mutex_unlock(&s_log_ctx.m_mtx);
-	return 0;
+	if(s_log_ctx.m_eLogLevel > LOG_E_TRACE)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_TRACE, fmt, &ap);
+	va_end(ap);
+}
+void log_output_debug(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_DEBUG)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_DEBUG, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_info(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_INFO)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_INFO, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_notice(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_NOTICE)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_NOTICE, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_warn(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_WARNING)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_WARNING, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_err(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_ERROR)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_ERROR, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_crit(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_CRIT)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_CRIT, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_alert(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_ALERT)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_ALERT, fmt, &ap);
+	va_end(ap);
+}
+
+void log_output_fatal(const char *fmt, ...)
+{
+	va_list ap;
+
+	if(s_log_ctx.m_eLogLevel > LOG_E_FATAL)
+		return;
+	va_start(ap, fmt);
+	log_output(LOG_E_FATAL, fmt, &ap);
+	va_end(ap);
+}
+
+
+int32_t log_set_output_callback(output_func_callback_t pCb)
+{
+	if(!s_log_ctx.m_inited)
+		return ERR_PUB_EUNINITED;
+	s_log_ctx.m_outptCb = pCb;
+	return ERR_PUB_OK;	
+}
+
+int32_t log_set_flush_callback(flush_func_callback_t pCb)
+{
+	if(!s_log_ctx.m_inited)
+		return ERR_PUB_EUNINITED;
+	s_log_ctx.m_flushCb = pCb;
+	return ERR_PUB_OK;
 }

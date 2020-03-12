@@ -1,7 +1,7 @@
-export   CHIP_TYPE := HI_3531A
+#export   CHIP_TYPE := HI_3531A
 #export   CHIP_TYPE := HI_3519
 
-TOP_PATH := /home/share_disk/workspace/code/util_tools
+TOP_PATH := /home/share/zp/workspace/test/util_tools
 
 #tools_chain
 ifeq ($(CHIP_TYPE), HI_3531A)
@@ -32,6 +32,7 @@ export MAKEDEPEND =$(CC) -MM -MT
 #common dir start
 cJSON_SRC_DIR := $(TOP_PATH)/code/cJSON
 LIST_SRC_DIR := $(TOP_PATH)/code/list
+ERR_SRC_DIR := $(TOP_PATH)/code/error
 CROSS_PLATFORM_DIR := $(TOP_PATH)/code/cross_platform
 
 #common dir end
